@@ -9,5 +9,4 @@ class SeebusApplicationTests {
     @Test
     fun contextLoads() {
     }
-
 }
