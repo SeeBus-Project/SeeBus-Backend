@@ -1,3 +1,3 @@
 package com.opensource.seebus.dto.request
 
-class AndroidDeviceRequestDto(val deviceId: String, val deviceToken: String)
+class AndroidDeviceRequestDto(val androidId: String, val firebaseToken: String)

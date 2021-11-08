@@ -9,3 +9,5 @@ spring:
       ddl-auto: create
     database: mysql
     database-platform: org.hibernate.dialect.MySQL5InnoDBDialect
+app:
+  firebase-configuration-file: seebus-c501c-firebase-adminsdk-hs1vu-68b780d580.json

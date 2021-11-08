@@ -7,12 +7,12 @@ import javax.persistence.Id
 
 @Entity
 class AndroidDevice(
-    deviceId: String,
-    deviceToken: String
+    androidId: String,
+    firebaseToken: String
 ) : DateEntity() {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     val id: Int? = null
-    val deviceId: String = deviceId
-    var deviceToken: String = deviceToken
+    val androidId: String = androidId
+    var firebaseToken: String = firebaseToken
 }

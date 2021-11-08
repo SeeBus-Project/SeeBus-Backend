@@ -8,17 +8,17 @@ import org.springframework.transaction.annotation.Transactional
 @Service
 class AndroidDeviceService(private val androidDeviceRepository: AndroidDeviceRepository) {
     @Transactional
-    fun inputData(deviceId: String, deviceToken: String): AndroidDevice {
-        val androidDevice = androidDeviceRepository.findByDeviceId(deviceId)
+    fun inputData(androidId: String, firebaseToken: String): AndroidDevice {
+        val androidDevice = androidDeviceRepository.findByDeviceId(androidId)
         if (androidDevice == null) {
             return androidDeviceRepository.save(
                 AndroidDevice(
-                    deviceId = deviceId,
-                    deviceToken = deviceToken
+                    androidId = androidId,
+                    firebaseToken = firebaseToken
                 )
             )
         } else {
-            androidDevice.deviceToken = deviceToken
+            androidDevice.firebaseToken = firebaseToken
             return androidDevice
         }
     }
