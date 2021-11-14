@@ -1,6 +1,10 @@
 package com.opensource.seebus.service
 
 import com.opensource.seebus.dto.request.PushNotificationRequestDto
+import com.opensource.seebus.exception.userService.AndroidDeviceNotFoundException
+import com.opensource.seebus.exception.userService.InvalidDestinationArsId
+import com.opensource.seebus.exception.userService.InvalidStationNameException
+import com.opensource.seebus.exception.userService.UserInfoNotFoundException
 import com.opensource.seebus.firebase.PushNotificationService
 import com.opensource.seebus.model.UserInfo
 import com.opensource.seebus.repository.AndroidDeviceRepository
@@ -22,11 +26,11 @@ class UserService(
 ) {
     private final val getStationByUid: String = "http://ws.bus.go.kr/api/rest/stationinfo/getStationByUid?"
     private final val serviceKey: String = "serviceKey=DOXYaa9D5JuNL%2Bq5nNQz6k7zfejF8nQ%2BSRtJXfMZWeyzory0LmZQconDuzhLotGg5ptaYH8AemeIRDo36TfQ%2BQ%3D%3D"
-
+    private final val getStationByName: String = "http://ws.bus.go.kr/api/rest/stationinfo/getStationByName?"
     @Transactional
     fun addUserLocation(androidId: String, longitude: Double, latitude: Double) {
-        val androidDevice = androidDeviceRepository.findByAndroidId(androidId) ?: throw Exception("오류1")
-        val userInfo = userInfoRepository.findByAndroidDevice(androidDevice) ?: throw Exception("오류2")
+        val androidDevice = androidDeviceRepository.findByAndroidId(androidId) ?: throw AndroidDeviceNotFoundException("$androidId 의 androidId는 아직 등록되지 않았습니다.")
+        val userInfo = userInfoRepository.findByAndroidDevice(androidDevice) ?: throw UserInfoNotFoundException("사용자의 정보가 저장되지 않아서 위치를 보낼수 없습니다.")
         userInfo.longitude = longitude
         userInfo.latitude = latitude
     }
@@ -36,11 +40,11 @@ class UserService(
         androidId: String,
         rtNm: String,
         startArsId: String,
-        destinationGPSX: String,
-        destinationGPSY: String
+        destinationName: String,
+        destinationArsId: String
     ) {
-        val androidDevice = androidDeviceRepository.findByAndroidId(androidId) ?: throw Exception("오류3")
-        println(androidDevice.id)
+        val destinationGPS = getDestinationGPS(destinationName, destinationArsId)
+        val androidDevice = androidDeviceRepository.findByAndroidId(androidId) ?: throw AndroidDeviceNotFoundException("$androidId 의 androidId는 아직 등록되지 않았습니다.")
         val userInfo = userInfoRepository.findByAndroidDevice(androidDevice)
         if (userInfo == null) {
             userInfoRepository.save(
@@ -50,15 +54,15 @@ class UserService(
                     startArsId = startArsId,
                     longitude = 0.0,
                     latitude = 0.0,
-                    destinationGPSX = destinationGPSX,
-                    destinationGPSY = destinationGPSY
+                    destinationGPSX = destinationGPS[0],
+                    destinationGPSY = destinationGPS[1]
                 )
             )
         } else {
             userInfo.rtNm = rtNm
             userInfo.startArsId = startArsId
-            userInfo.destinationGPSX = destinationGPSX
-            userInfo.destinationGPSY = destinationGPSY
+            userInfo.destinationGPSX = destinationGPS[0]
+            userInfo.destinationGPSY = destinationGPS[1]
         }
         var arrivalTime: MutableList<String> = getArrivalTime(startArsId, rtNm)
         println(arrivalTime[0])
@@ -88,6 +92,32 @@ class UserService(
         }
     }
 
+    private fun getDestinationGPS(destinationName: String, destinationArsId: String): MutableList<String> {
+        var destinationGPS: MutableList<String> = ArrayList()
+        val dbFactory = DocumentBuilderFactory.newInstance()
+        val dBuilder = dbFactory.newDocumentBuilder()
+        val doc: Document = dBuilder.parse("$getStationByName$serviceKey&stSrch=$destinationName")
+        doc.documentElement.normalize()
+        val nList = doc.getElementsByTagName("itemList")
+        if (nList.length == 0) {
+            throw InvalidStationNameException("$destinationName 이름의 정거장은 없습니다.")
+        }
+        for (temp in 0 until nList.length) {
+            val nNode = nList.item(temp)
+            if (nNode.nodeType == Node.ELEMENT_NODE) {
+                val eElement = nNode as Element
+                if (getTagValue("arsId", eElement).equals(destinationArsId)) {
+                    destinationGPS.add(getTagValue("tmX", eElement).toString())
+                    destinationGPS.add(getTagValue("tmY", eElement).toString())
+                    break
+                }
+            }
+        }
+        if (destinationGPS.isEmpty()) {
+            throw InvalidDestinationArsId("$destinationArsId 버스는 $destinationName 을 지나지 않습니다.")
+        }
+        return destinationGPS
+    }
     private fun getArrivalTime(startArsId: String, rtNm: String): MutableList<String> {
         var arrivalTime: MutableList<String> = ArrayList()
         val dbFactory = DocumentBuilderFactory.newInstance()
@@ -102,6 +132,7 @@ class UserService(
                 if (getTagValue("rtNm", eElement).equals(rtNm)) {
                     arrivalTime.add(getTagValue("arrmsg1", eElement).toString())
                     arrivalTime.add(getTagValue("arrmsg2", eElement).toString())
+                    break
                 }
             }
         }

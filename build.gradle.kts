@@ -26,6 +26,7 @@ dependencies {
     implementation("io.springfox:springfox-boot-starter:3.0.0")
     implementation("io.springfox:springfox-swagger-ui:3.0.0")
     implementation("com.google.firebase:firebase-admin:6.8.1")
+    implementation("io.github.microutils:kotlin-logging-jvm:2.0.10")
     runtimeOnly("com.h2database:h2")
     runtimeOnly("mysql:mysql-connector-java")
     testImplementation("org.springframework.boot:spring-boot-starter-test")

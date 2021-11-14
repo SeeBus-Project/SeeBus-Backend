@@ -4,6 +4,6 @@ class UserInfoRequestDto(
     val androidId: String,
     val rtNm: String,
     val startArsId: String,
-    val destinationGPSX: String,
-    val destinationGPSY: String
+    val destinationName: String,
+    val destinationArsId: String
 )

@@ -17,8 +17,8 @@ class UserController(private val userService: UserService) {
             userInfoRequestDto.androidId,
             userInfoRequestDto.rtNm,
             userInfoRequestDto.startArsId,
-            userInfoRequestDto.destinationGPSX,
-            userInfoRequestDto.destinationGPSY
+            userInfoRequestDto.destinationName,
+            userInfoRequestDto.destinationArsId
         )
     }
 
