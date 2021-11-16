@@ -6,9 +6,12 @@ import com.opensource.seebus.exception.userService.InvalidDestinationArsId
 import com.opensource.seebus.exception.userService.InvalidStationNameException
 import com.opensource.seebus.exception.userService.UserInfoNotFoundException
 import com.opensource.seebus.firebase.PushNotificationService
+import com.opensource.seebus.model.AndroidDevice
 import com.opensource.seebus.model.UserInfo
 import com.opensource.seebus.repository.AndroidDeviceRepository
 import com.opensource.seebus.repository.UserInfoRepository
+import com.opensource.seebus.test.ScheduleService
+import org.quartz.Scheduler
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import org.w3c.dom.Document
@@ -22,7 +25,9 @@ import javax.xml.parsers.DocumentBuilderFactory
 class UserService(
     private val androidDeviceRepository: AndroidDeviceRepository,
     private val userInfoRepository: UserInfoRepository,
-    private val pushNotificationService: PushNotificationService
+    private val pushNotificationService: PushNotificationService,
+    private val scheduleService: ScheduleService,
+    private val scheduler: Scheduler
 ) {
     private final val getStationByUid: String = "http://ws.bus.go.kr/api/rest/stationinfo/getStationByUid?"
     private final val serviceKey: String = "serviceKey=DOXYaa9D5JuNL%2Bq5nNQz6k7zfejF8nQ%2BSRtJXfMZWeyzory0LmZQconDuzhLotGg5ptaYH8AemeIRDo36TfQ%2BQ%3D%3D"
@@ -33,6 +38,19 @@ class UserService(
         val userInfo = userInfoRepository.findByAndroidDevice(androidDevice) ?: throw UserInfoNotFoundException("사용자의 정보가 저장되지 않아서 위치를 보낼수 없습니다.")
         userInfo.longitude = longitude
         userInfo.latitude = latitude
+        // 사용자 위치와 목적지 gps계산해서 50m이내면 곧 도착 푸시알림 보내기
+        val distance = getDistance(userInfo.destinationGPSY, userInfo.destinationGPSX, latitude, longitude)
+//        println(distance)
+        if (distance <50.0 && userInfo.isArrived == false) {
+            pushNotificationService.sendPushNotificationToToken(
+                PushNotificationRequestDto(
+                    "알림",
+                    "목적지 근처입니다. 하차벨 누르겠습니다.",
+                    androidDevice.firebaseToken
+                )
+            )
+            userInfo.isArrived = true
+        }
     }
 
     @Transactional
@@ -43,7 +61,12 @@ class UserService(
         destinationName: String,
         destinationArsId: String
     ) {
-        val destinationGPS = getDestinationGPS(destinationName, destinationArsId)
+        // 도착지 정거장 gps 좌표 얻기
+        val destinationGPS: MutableList<Double> = getDestinationGPS(destinationName, destinationArsId)
+        // 출발지 시간1, 시간2, GPSX, GPSY
+        val startInfo: MutableList<Double> = getStartInfo(startArsId, rtNm)
+//        println(startInfo[0])
+//        println(startInfo[1])
         val androidDevice = androidDeviceRepository.findByAndroidId(androidId) ?: throw AndroidDeviceNotFoundException("$androidId 의 androidId는 아직 등록되지 않았습니다.")
         val userInfo = userInfoRepository.findByAndroidDevice(androidDevice)
         if (userInfo == null) {
@@ -51,7 +74,8 @@ class UserService(
                 UserInfo(
                     androidDevice = androidDevice,
                     rtNm = rtNm,
-                    startArsId = startArsId,
+                    startGPSX = startInfo[2],
+                    startGPSY = startInfo[3],
                     longitude = 0.0,
                     latitude = 0.0,
                     destinationGPSX = destinationGPS[0],
@@ -60,23 +84,21 @@ class UserService(
             )
         } else {
             userInfo.rtNm = rtNm
-            userInfo.startArsId = startArsId
+            userInfo.startGPSX = startInfo[2]
+            userInfo.startGPSY = startInfo[3]
             userInfo.destinationGPSX = destinationGPS[0]
             userInfo.destinationGPSY = destinationGPS[1]
+            userInfo.isArrived = false
         }
-        var arrivalTime: MutableList<String> = getArrivalTime(startArsId, rtNm)
-        println(arrivalTime[0])
-        println(arrivalTime[1])
 
-        if (arrivalTime[0].contains("곧 도착")) {
-            pushNotificationService.sendPushNotificationToToken(
-                PushNotificationRequestDto(
-                    "알림",
-                    "버스가 곧 도착합니다.",
-                    androidDevice.firebaseToken
-                )
-            )
-        } else if (arrivalTime[0].contains("운행종료")) {
+        val traTime1 = startInfo[0].toInt()
+        val traTime2 = startInfo[1].toInt()
+        scheduledPushAlarm(androidDevice, traTime1, traTime2)
+    }
+
+    private fun scheduledPushAlarm(androidDevice: AndroidDevice, traTime1: Int, traTime2: Int) {
+        // traTime2 두번째 시간 차이가 많이 나서 우선은 사용 안함 회의때 물어보기
+        if (traTime1 == 0) {
             pushNotificationService.sendPushNotificationToToken(
                 PushNotificationRequestDto(
                     "알림",
@@ -84,16 +106,20 @@ class UserService(
                     androidDevice.firebaseToken
                 )
             )
+        } else if (traTime1 <60) { // 60으로 다시 바꿀것
+            pushNotificationService.sendPushNotificationToToken(
+                PushNotificationRequestDto(
+                    "알림",
+                    "버스가 곧 도착합니다.",
+                    androidDevice.firebaseToken
+                )
+            )
         } else {
-            // TODO 분초 나누기 traTime1 traTime2
-//            val tmp=arrivalTime[0].split("분|초후|분후")
-//            println(tmp[0])
-//            println(tmp[1])
+            scheduleService.registerJob(scheduler, androidDevice.firebaseToken, traTime1)
         }
     }
-
-    private fun getDestinationGPS(destinationName: String, destinationArsId: String): MutableList<String> {
-        var destinationGPS: MutableList<String> = ArrayList()
+    private fun getDestinationGPS(destinationName: String, destinationArsId: String): MutableList<Double> {
+        val destinationGPS: MutableList<Double> = ArrayList()
         val dbFactory = DocumentBuilderFactory.newInstance()
         val dBuilder = dbFactory.newDocumentBuilder()
         val doc: Document = dBuilder.parse("$getStationByName$serviceKey&stSrch=$destinationName")
@@ -107,8 +133,8 @@ class UserService(
             if (nNode.nodeType == Node.ELEMENT_NODE) {
                 val eElement = nNode as Element
                 if (getTagValue("arsId", eElement).equals(destinationArsId)) {
-                    destinationGPS.add(getTagValue("tmX", eElement).toString())
-                    destinationGPS.add(getTagValue("tmY", eElement).toString())
+                    destinationGPS.add(getTagValue("tmX", eElement)!!.toDouble())
+                    destinationGPS.add(getTagValue("tmY", eElement)!!.toDouble())
                     break
                 }
             }
@@ -118,8 +144,8 @@ class UserService(
         }
         return destinationGPS
     }
-    private fun getArrivalTime(startArsId: String, rtNm: String): MutableList<String> {
-        var arrivalTime: MutableList<String> = ArrayList()
+    private fun getStartInfo(startArsId: String, rtNm: String): MutableList<Double> {
+        val startInfo: MutableList<Double> = ArrayList()
         val dbFactory = DocumentBuilderFactory.newInstance()
         val dBuilder = dbFactory.newDocumentBuilder()
         val doc: Document = dBuilder.parse("$getStationByUid$serviceKey&arsId=$startArsId")
@@ -130,18 +156,44 @@ class UserService(
             if (nNode.nodeType == Node.ELEMENT_NODE) {
                 val eElement = nNode as Element
                 if (getTagValue("rtNm", eElement).equals(rtNm)) {
-                    arrivalTime.add(getTagValue("arrmsg1", eElement).toString())
-                    arrivalTime.add(getTagValue("arrmsg2", eElement).toString())
+                    // 시간 넣기
+                    startInfo.add(getTagValue("traTime1", eElement)!!.toDouble())
+                    startInfo.add(getTagValue("traTime2", eElement)!!.toDouble())
+                    // 출발지 GPS넣기
+                    startInfo.add(getTagValue("gpsX", eElement)!!.toDouble())
+                    startInfo.add(getTagValue("gpsY", eElement)!!.toDouble())
                     break
                 }
             }
         }
-        return arrivalTime
+        return startInfo
     }
 
     private fun getTagValue(tag: String, eElement: Element): String? {
         val nlList: NodeList = eElement.getElementsByTagName(tag).item(0).childNodes
         val nValue: Node = nlList.item(0) as Node
         return nValue.nodeValue
+    }
+
+    private fun getDistance(lat1: Double, lon1: Double, lat2: Double, lon2: Double): Double {
+        val theta = lon1 - lon2
+        var dist =
+            Math.sin(deg2rad(lat1)) * Math.sin(deg2rad(lat2)) + Math.cos(deg2rad(lat1)) * Math.cos(deg2rad(lat2)) * Math.cos(
+                deg2rad(theta)
+            )
+        dist = Math.acos(dist)
+        dist = rad2deg(dist)
+        dist = dist * 1609.344
+        return dist
+    }
+
+    // This function converts decimal degrees to radians
+    private fun deg2rad(deg: Double): Double {
+        return deg * Math.PI / 180.0
+    }
+
+    // This function converts radians to decimal degrees
+    private fun rad2deg(rad: Double): Double {
+        return rad * 180 / Math.PI
     }
 }
