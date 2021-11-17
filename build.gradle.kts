@@ -28,6 +28,7 @@ dependencies {
     implementation("com.google.firebase:firebase-admin:6.8.1")
     implementation("io.github.microutils:kotlin-logging-jvm:2.0.10")
     implementation("org.springframework.boot:spring-boot-starter-quartz")
+    implementation("com.fasterxml.jackson.module:jackson-module-kotlin")
     runtimeOnly("com.h2database:h2")
     runtimeOnly("mysql:mysql-connector-java")
     testImplementation("org.springframework.boot:spring-boot-starter-test")
