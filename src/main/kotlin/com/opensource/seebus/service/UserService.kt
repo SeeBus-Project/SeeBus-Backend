@@ -105,9 +105,9 @@ class UserService(
     }
 
     @Transactional
-    fun sendGuideExitSignal(androidId:String) {
+    fun sendGuideExitSignal(androidId: String) {
         val androidDevice = androidDeviceRepository.findByAndroidId(androidId) ?: throw AndroidDeviceNotFoundException("$androidId 의 androidId는 아직 등록되지 않았습니다.")
-        androidDevice.isArrived=true
+        androidDevice.isArrived = true
     }
 
     private fun scheduledPushAlarm(androidDevice: AndroidDevice, traTime1: Int, traTime2: Int) {
