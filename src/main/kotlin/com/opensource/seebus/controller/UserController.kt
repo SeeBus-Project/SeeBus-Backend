@@ -1,5 +1,6 @@
 package com.opensource.seebus.controller
 
+import com.opensource.seebus.dto.request.GuideExitRequestDto
 import com.opensource.seebus.dto.request.UserInfoRequestDto
 import com.opensource.seebus.dto.request.UserLocationRequestDto
 import com.opensource.seebus.service.UserService
@@ -13,7 +14,7 @@ class UserController(private val userService: UserService) {
     @ApiOperation("선택 완료하고 한번만 통신한다")
     @PostMapping("/user")
     fun sendAndroidDeviceInfo(@RequestBody userInfoRequestDto: UserInfoRequestDto) {
-        userService.addAndroidDeviceInfo(
+        userService.addUserInfo(
             userInfoRequestDto.androidId,
             userInfoRequestDto.rtNm,
             userInfoRequestDto.startArsId,
@@ -30,5 +31,11 @@ class UserController(private val userService: UserService) {
             userLocationRequestDto.longitude,
             userLocationRequestDto.latitude
         )
+    }
+
+    @ApiOperation("길안내 종료")
+    @PostMapping("/exit")
+    fun sendGuideExit(@RequestBody guideExitRequestDto: GuideExitRequestDto) {
+        userService.sendGuideExitSignal(guideExitRequestDto.androidId)
     }
 }

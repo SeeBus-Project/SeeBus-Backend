@@ -19,6 +19,7 @@ class AndroidDevice(
     var firebaseToken: String = firebaseToken
     var sendUserArrivedPushAlarm: Boolean = false
     var sendBusArrivedPushAlarm: Boolean = false
+    var isArrived = true
     @OneToMany(mappedBy = "androidDevice")
     @JsonIgnoreProperties("androidDevice")
     var userInfo: List<UserInfo>? = null

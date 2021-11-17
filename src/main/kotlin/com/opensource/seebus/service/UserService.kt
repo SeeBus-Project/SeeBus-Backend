@@ -49,11 +49,12 @@ class UserService(
                 )
             )
             androidDevice.sendUserArrivedPushAlarm = true
+            androidDevice.isArrived = true
         }
     }
 
     @Transactional
-    fun addAndroidDeviceInfo(
+    fun addUserInfo(
         androidId: String,
         rtNm: String,
         startArsId: String,
@@ -70,6 +71,7 @@ class UserService(
         val userInfo = userInfoRepository.findByAndroidDevice(androidDevice)
         androidDevice.sendBusArrivedPushAlarm = false
         androidDevice.sendUserArrivedPushAlarm = false
+        androidDevice.isArrived = false
         if (userInfo == null) {
             userInfoRepository.save(
                 UserInfo(
@@ -100,6 +102,12 @@ class UserService(
         val traTime1 = startInfo[0].toInt()
         val traTime2 = startInfo[1].toInt()
         scheduledPushAlarm(androidDevice, traTime1, traTime2)
+    }
+
+    @Transactional
+    fun sendGuideExitSignal(androidId:String) {
+        val androidDevice = androidDeviceRepository.findByAndroidId(androidId) ?: throw AndroidDeviceNotFoundException("$androidId 의 androidId는 아직 등록되지 않았습니다.")
+        androidDevice.isArrived=true
     }
 
     private fun scheduledPushAlarm(androidDevice: AndroidDevice, traTime1: Int, traTime2: Int) {

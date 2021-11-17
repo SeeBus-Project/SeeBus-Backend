@@ -1,4 +1,4 @@
-package com.opensource.seebus.dto.response
+package com.opensource.seebus.exception
 
 import org.springframework.http.HttpStatus
 import java.time.LocalDateTime

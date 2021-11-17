@@ -1,6 +1,5 @@
 package com.opensource.seebus.exception
 
-import com.opensource.seebus.dto.response.ErrorResponse
 import com.opensource.seebus.exception.userService.AndroidDeviceNotFoundException
 import com.opensource.seebus.exception.userService.InvalidDestinationArsId
 import com.opensource.seebus.exception.userService.InvalidStationNameException

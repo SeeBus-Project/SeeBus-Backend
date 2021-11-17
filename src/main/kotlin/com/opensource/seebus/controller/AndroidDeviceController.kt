@@ -27,6 +27,6 @@ class AndroidDeviceController(private val androidDeviceService: AndroidDeviceSer
     @ApiOperation("안드로이드 디바이스 정보 보내기")
     @PostMapping("/device")
     fun sendAndroidDeviceInfo(@RequestBody androidDeviceRequestDto: AndroidDeviceRequestDto): AndroidDevice {
-        return androidDeviceService.inputData(androidDeviceRequestDto.androidId, androidDeviceRequestDto.firebaseToken)
+        return androidDeviceService.addAndroidDevice(androidDeviceRequestDto.androidId, androidDeviceRequestDto.firebaseToken)
     }
 }
