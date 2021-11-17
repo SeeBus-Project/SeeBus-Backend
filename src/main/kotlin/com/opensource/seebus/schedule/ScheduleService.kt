@@ -1,4 +1,4 @@
-package com.opensource.seebus.test
+package com.opensource.seebus.schedule
 
 import mu.KotlinLogging
 import org.quartz.JobBuilder
@@ -10,12 +10,12 @@ import org.springframework.stereotype.Service
 class ScheduleService : JobService() {
     private val log = KotlinLogging.logger {}
 
-    override fun registerJob(scheduler: Scheduler?, firebaseToken: String, traTime1: Int): Boolean {
+    override fun registerJob(scheduler: Scheduler?, androidId: String, traTime1: Int): Boolean {
         var result = false
         try {
             val jobDetail: JobDetail =
-                JobBuilder.newJob(SendPushAlarmJob::class.java).withIdentity(firebaseToken).build()
-            result = setJobSchedule(scheduler!!, jobDetail, firebaseToken, traTime1)
+                JobBuilder.newJob(SendPushAlarmJob::class.java).withIdentity(androidId).build()
+            result = setJobSchedule(scheduler!!, jobDetail, androidId, traTime1)
         } catch (e: Exception) {
             log.error(e.message)
         }

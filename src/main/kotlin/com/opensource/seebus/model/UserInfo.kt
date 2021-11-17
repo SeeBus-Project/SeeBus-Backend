@@ -11,10 +11,12 @@ import javax.persistence.ManyToOne
 class UserInfo(
     androidDevice: AndroidDevice,
     rtNm: String,
+    startStationName: String,
     startGPSX: Double,
     startGPSY: Double,
     longitude: Double,
     latitude: Double,
+    destinationStationName: String,
     destinationGPSX: Double,
     destinationGPSY: Double
 ) : DateEntity() {
@@ -25,11 +27,12 @@ class UserInfo(
     @JoinColumn(name = "androidId")
     val androidDevice: AndroidDevice = androidDevice
     var rtNm: String = rtNm // 버스번호
+    var startStationName = startStationName
     var startGPSX: Double = startGPSX
     var startGPSY: Double = startGPSY
     var longitude: Double = longitude
     var latitude: Double = latitude
+    var destinationStationName = destinationStationName
     var destinationGPSX: Double = destinationGPSX
     var destinationGPSY: Double = destinationGPSY
-    var isArrived: Boolean = false
 }

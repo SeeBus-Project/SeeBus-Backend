@@ -10,7 +10,7 @@ import com.opensource.seebus.model.AndroidDevice
 import com.opensource.seebus.model.UserInfo
 import com.opensource.seebus.repository.AndroidDeviceRepository
 import com.opensource.seebus.repository.UserInfoRepository
-import com.opensource.seebus.test.ScheduleService
+import com.opensource.seebus.schedule.ScheduleService
 import org.quartz.Scheduler
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
@@ -40,8 +40,7 @@ class UserService(
         userInfo.latitude = latitude
         // 사용자 위치와 목적지 gps계산해서 50m이내면 곧 도착 푸시알림 보내기
         val distance = getDistance(userInfo.destinationGPSY, userInfo.destinationGPSX, latitude, longitude)
-//        println(distance)
-        if (distance <50.0 && userInfo.isArrived == false) {
+        if (distance <100.0 && androidDevice.sendUserArrivedPushAlarm == false) {
             pushNotificationService.sendPushNotificationToToken(
                 PushNotificationRequestDto(
                     "알림",
@@ -49,7 +48,7 @@ class UserService(
                     androidDevice.firebaseToken
                 )
             )
-            userInfo.isArrived = true
+            androidDevice.sendUserArrivedPushAlarm = true
         }
     }
 
@@ -64,31 +63,38 @@ class UserService(
         // 도착지 정거장 gps 좌표 얻기
         val destinationGPS: MutableList<Double> = getDestinationGPS(destinationName, destinationArsId)
         // 출발지 시간1, 시간2, GPSX, GPSY
-        val startInfo: MutableList<Double> = getStartInfo(startArsId, rtNm)
+        val startInfo: MutableList<String> = getStartInfo(startArsId, rtNm)
 //        println(startInfo[0])
 //        println(startInfo[1])
         val androidDevice = androidDeviceRepository.findByAndroidId(androidId) ?: throw AndroidDeviceNotFoundException("$androidId 의 androidId는 아직 등록되지 않았습니다.")
         val userInfo = userInfoRepository.findByAndroidDevice(androidDevice)
+        androidDevice.sendBusArrivedPushAlarm = false
+        androidDevice.sendUserArrivedPushAlarm = false
         if (userInfo == null) {
             userInfoRepository.save(
                 UserInfo(
                     androidDevice = androidDevice,
                     rtNm = rtNm,
-                    startGPSX = startInfo[2],
-                    startGPSY = startInfo[3],
+                    startStationName = startInfo[4],
+                    startGPSX = startInfo[2].toDouble(),
+                    startGPSY = startInfo[3].toDouble(),
                     longitude = 0.0,
                     latitude = 0.0,
+                    destinationStationName = destinationName,
                     destinationGPSX = destinationGPS[0],
                     destinationGPSY = destinationGPS[1]
                 )
             )
         } else {
             userInfo.rtNm = rtNm
-            userInfo.startGPSX = startInfo[2]
-            userInfo.startGPSY = startInfo[3]
+            userInfo.startStationName = startInfo[4]
+            userInfo.startGPSX = startInfo[2].toDouble()
+            userInfo.startGPSY = startInfo[3].toDouble()
+            userInfo.longitude = 0.0
+            userInfo.latitude = 0.0
+            userInfo.destinationStationName = destinationName
             userInfo.destinationGPSX = destinationGPS[0]
             userInfo.destinationGPSY = destinationGPS[1]
-            userInfo.isArrived = false
         }
 
         val traTime1 = startInfo[0].toInt()
@@ -106,6 +112,7 @@ class UserService(
                     androidDevice.firebaseToken
                 )
             )
+            androidDevice.sendBusArrivedPushAlarm = true
         } else if (traTime1 <60) { // 60으로 다시 바꿀것
             pushNotificationService.sendPushNotificationToToken(
                 PushNotificationRequestDto(
@@ -114,8 +121,9 @@ class UserService(
                     androidDevice.firebaseToken
                 )
             )
+            androidDevice.sendBusArrivedPushAlarm = true
         } else {
-            scheduleService.registerJob(scheduler, androidDevice.firebaseToken, traTime1)
+            scheduleService.registerJob(scheduler, androidDevice.androidId, traTime1)
         }
     }
     private fun getDestinationGPS(destinationName: String, destinationArsId: String): MutableList<Double> {
@@ -144,8 +152,8 @@ class UserService(
         }
         return destinationGPS
     }
-    private fun getStartInfo(startArsId: String, rtNm: String): MutableList<Double> {
-        val startInfo: MutableList<Double> = ArrayList()
+    private fun getStartInfo(startArsId: String, rtNm: String): MutableList<String> {
+        val startInfo: MutableList<String> = ArrayList()
         val dbFactory = DocumentBuilderFactory.newInstance()
         val dBuilder = dbFactory.newDocumentBuilder()
         val doc: Document = dBuilder.parse("$getStationByUid$serviceKey&arsId=$startArsId")
@@ -157,11 +165,13 @@ class UserService(
                 val eElement = nNode as Element
                 if (getTagValue("rtNm", eElement).equals(rtNm)) {
                     // 시간 넣기
-                    startInfo.add(getTagValue("traTime1", eElement)!!.toDouble())
-                    startInfo.add(getTagValue("traTime2", eElement)!!.toDouble())
+                    startInfo.add(getTagValue("traTime1", eElement).toString())
+                    startInfo.add(getTagValue("traTime2", eElement).toString())
                     // 출발지 GPS넣기
-                    startInfo.add(getTagValue("gpsX", eElement)!!.toDouble())
-                    startInfo.add(getTagValue("gpsY", eElement)!!.toDouble())
+                    startInfo.add(getTagValue("gpsX", eElement).toString())
+                    startInfo.add(getTagValue("gpsY", eElement).toString())
+                    // 출발지 정거장 이름
+                    startInfo.add(getTagValue("stNm", eElement).toString())
                     break
                 }
             }
@@ -183,6 +193,7 @@ class UserService(
             )
         dist = Math.acos(dist)
         dist = rad2deg(dist)
+        dist = dist * 60 * 1.1515
         dist = dist * 1609.344
         return dist
     }

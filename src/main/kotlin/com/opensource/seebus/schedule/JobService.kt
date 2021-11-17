@@ -1,4 +1,4 @@
-package com.opensource.seebus.test
+package com.opensource.seebus.schedule
 
 import mu.KotlinLogging
 import org.quartz.CronScheduleBuilder
@@ -15,7 +15,7 @@ import java.time.format.DateTimeFormatter
 @Component
 abstract class JobService {
     private val log = KotlinLogging.logger {}
-    abstract fun registerJob(scheduler: Scheduler?, firebaseToken: String, traTime1: Int): Boolean
+    abstract fun registerJob(scheduler: Scheduler?, androidId: String, traTime1: Int): Boolean
 
     fun deleteJob(scheduler: Scheduler, firebaseToken: String) {
         try {
@@ -25,7 +25,7 @@ abstract class JobService {
         }
     }
 
-    fun setJobSchedule(scheduler: Scheduler, jobDetail: JobDetail?, firebaseToken: String, traTime1: Int): Boolean {
+    fun setJobSchedule(scheduler: Scheduler, jobDetail: JobDetail?, androidId: String, traTime1: Int): Boolean {
         try {
             val localDateTime = LocalDateTime.now().plusSeconds(traTime1.toLong() - 55)
             val cronExpression = localDateTime.format(DateTimeFormatter.ofPattern("ss mm HH dd MM ? yyyy"))
@@ -34,28 +34,22 @@ abstract class JobService {
             // 기존에 같은 jobname으로 등록된 잡이 있는지 확인
             var overlap = false
             for (jobKey in scheduler.getJobKeys(null)) {
-                if (jobKey.name.equals(firebaseToken)) {
+                if (jobKey.name.equals(androidId)) {
                     overlap = true
                 }
             }
             // 기존에 등록된 잡이 있다면 해당 잡에 대한 기존 스케쥴 삭제하고 새 스케쥴을 추가
             if (overlap) {
-//                println("삭제")
-                deleteJob(scheduler, firebaseToken)
-                val trigger: Trigger = TriggerBuilder.newTrigger().withIdentity(firebaseToken)
-                    .withSchedule(CronScheduleBuilder.cronSchedule(cronExpression)).build()
-                scheduler.scheduleJob(jobDetail, trigger)
-            } else {
-//                println("최초")
-                val trigger: Trigger = TriggerBuilder.newTrigger().withIdentity(firebaseToken)
-                    .withSchedule(CronScheduleBuilder.cronSchedule(cronExpression)).build()
-                scheduler.scheduleJob(jobDetail, trigger)
+                deleteJob(scheduler, androidId)
             }
-            log.info("$firebaseToken 사용자에게 $cronExpression 시간에 푸시알림을 보냅니다.")
+            val trigger: Trigger = TriggerBuilder.newTrigger().withIdentity(androidId).withIdentity(androidId)
+                .withSchedule(CronScheduleBuilder.cronSchedule(cronExpression)).build()
+            scheduler.scheduleJob(jobDetail, trigger)
+            log.info("$androidId 사용자에게 $localDateTime 에 푸시알림을 보냅니다.")
         } catch (e: SchedulerException) {
             log.error(
                 "[[ERROR]] 잡 추가 에러 !!! | jobId: {} | jobNm: {} | msg: {}",
-                firebaseToken,
+                androidId,
                 e.message
             )
             return false
