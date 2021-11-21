@@ -17,11 +17,12 @@ abstract class JobService {
     private val log = KotlinLogging.logger {}
     abstract fun registerJob(scheduler: Scheduler?, androidId: String, traTime1: Int): Boolean
 
-    fun deleteJob(scheduler: Scheduler, firebaseToken: String) {
+    fun deleteJob(scheduler: Scheduler, androidId: String) {
         try {
-            scheduler.unscheduleJob(TriggerKey(firebaseToken))
+            scheduler.unscheduleJob(TriggerKey(androidId))
+            log.info("스케쥴 삭제 완료 androidId : $androidId")
         } catch (e: Exception) {
-            log.error("[[ERROR]] 잡 삭제 에러 !!! | jobId: {}| msg: {}", firebaseToken, e.message)
+            log.error("[[ERROR]] 잡 삭제 에러 !!! | jobId: {}| msg: {}", androidId, e.message)
         }
     }
 

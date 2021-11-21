@@ -17,10 +17,15 @@ class AndroidDevice(
     val id: Int? = null
     val androidId: String = androidId
     var firebaseToken: String = firebaseToken
-    var sendUserArrivedPushAlarm: Boolean = false
+    var sendUserArrivedPushAlarmLeft1Station: Boolean = false
+    var sendUserArrivedPushAlarmLeft2Station: Boolean = false
+    var sendUserArrivedPushAlarmLeft3Station: Boolean = false
     var sendBusArrivedPushAlarm: Boolean = false
     var isArrived = true
     @OneToMany(mappedBy = "androidDevice")
     @JsonIgnoreProperties("androidDevice")
     var userInfo: List<UserInfo>? = null
+    @OneToMany(mappedBy = "androidDevice")
+    @JsonIgnoreProperties("androidDevice")
+    var routeInfo: List<RouteInfo>? = null
 }

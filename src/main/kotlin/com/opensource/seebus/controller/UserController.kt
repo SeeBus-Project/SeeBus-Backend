@@ -3,6 +3,7 @@ package com.opensource.seebus.controller
 import com.opensource.seebus.dto.request.GuideExitRequestDto
 import com.opensource.seebus.dto.request.UserInfoRequestDto
 import com.opensource.seebus.dto.request.UserLocationRequestDto
+import com.opensource.seebus.dto.response.UserLocationResponseDto
 import com.opensource.seebus.service.UserService
 import io.swagger.annotations.ApiOperation
 import org.springframework.web.bind.annotation.PostMapping
@@ -25,8 +26,8 @@ class UserController(private val userService: UserService) {
 
     @ApiOperation("선택 완료하고 목적지에 도착하기 전까지 5초마다 사용자 위치 보내기")
     @PostMapping("/location")
-    fun sendUserLocation(@RequestBody userLocationRequestDto: UserLocationRequestDto) {
-        userService.addUserLocation(
+    fun sendUserLocation(@RequestBody userLocationRequestDto: UserLocationRequestDto): UserLocationResponseDto {
+        return userService.addUserLocation(
             userLocationRequestDto.androidId,
             userLocationRequestDto.longitude,
             userLocationRequestDto.latitude
