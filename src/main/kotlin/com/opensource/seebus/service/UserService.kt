@@ -83,7 +83,7 @@ class UserService(
                 // EC2 신호전달(TCP)
                 val thread = ClientThread()
                 thread.data[0] = "out"
-                thread.data[1] = "departure" // 도착지정거장이름
+                thread.data[1] = routeInfo[nextStationCount].stationName // 도착지정거장이름
                 thread.data[2] = "no means data" // 의미없는 데이터
                 thread.getPort = 5000
                 thread.start()
@@ -118,10 +118,9 @@ class UserService(
                     )
                 )
                 androidDevice.sendUserArrivedPushAlarmLeft3Station = true
-            } else {
-                routeInfo[nextStationCount].userArrived = true
             }
         }
+        routeInfo[nextStationCount].userArrived = true
         return UserLocationResponseDto(androidId, routeInfo[nextStationCount].stationName, androidDevice.isArrived)
     }
 
