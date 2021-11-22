@@ -119,9 +119,9 @@ class UserService(
                 )
                 androidDevice.sendUserArrivedPushAlarmLeft3Station = true
             }
+            routeInfo[nextStationCount].userArrived = true
         }
-        routeInfo[nextStationCount].userArrived = true
-        return UserLocationResponseDto(androidId, routeInfo[nextStationCount].stationName, androidDevice.isArrived)
+        return UserLocationResponseDto(androidId, routeInfo[nextStationCount].stationName, remainingStationCount, androidDevice.isArrived)
     }
 
     @Transactional
