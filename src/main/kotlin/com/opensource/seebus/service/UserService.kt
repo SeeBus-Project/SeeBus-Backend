@@ -96,13 +96,14 @@ class UserService(
                 )
                 androidDevice.sendUserArrivedPushAlarmLeft1Station = true
                 androidDevice.isArrived = true
+                jobService.deleteJob(scheduler, androidId)
             } else if (remainingStationCount == 2 &&
                 androidDevice.sendUserArrivedPushAlarmLeft2Station == false
             ) {
                 pushNotificationService.sendPushNotificationToToken(
                     PushNotificationRequestDto(
                         "알림",
-                        "목적지까지 2정거장 남았습니다.",
+                        "목적지까지 1정거장 남았습니다.",
                         androidDevice.firebaseToken
                     )
                 )
@@ -113,7 +114,7 @@ class UserService(
                 pushNotificationService.sendPushNotificationToToken(
                     PushNotificationRequestDto(
                         "알림",
-                        "목적지까지 3정거장 남았습니다.",
+                        "목적지까지 2정거장 남았습니다.",
                         androidDevice.firebaseToken
                     )
                 )
