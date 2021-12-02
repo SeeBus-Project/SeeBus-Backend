@@ -76,7 +76,7 @@ class UserService(
             latitude, longitude
         )
 
-        if (distance <100.0) {
+        if (distance <200.0) {
             if (remainingStationCount == 1 &&
                 androidDevice.sendUserArrivedPushAlarmLeft1Station == false
             ) {
